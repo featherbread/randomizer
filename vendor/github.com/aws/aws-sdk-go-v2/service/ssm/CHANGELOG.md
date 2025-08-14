@@ -1,3 +1,34 @@
+# v1.63.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.62.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.61.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.61.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.60.2 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.60.1 (2025-07-18)
+
+* **Documentation**: July 2025 doc-only updates for Systems Manager.
+
+# v1.60.0 (2025-06-30)
+
+* **Feature**: Introduces AccessType, a new filter value for the DescribeSessions API.
+
 # v1.59.3 (2025-06-17)
 
 * **Dependency Update**: Update to smithy-go v1.22.4.
