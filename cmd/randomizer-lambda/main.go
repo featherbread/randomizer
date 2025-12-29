@@ -59,25 +59,21 @@ func main() {
 
 	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
 		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
-		if err != nil {
-			logger.Warn("Failed to detect Lambda resources for tracing", "err", err)
-		} else {
+		if err == nil {
 			traceResource, err = resource.Merge(lambdaResource, traceResource)
-			if err != nil {
-				logger.Warn("Failed to merge Lambda resources for tracing", "err", err)
-			}
 		}
-
-		xrayUDPExporter, err := xrayudp.NewSpanExporter(ctx)
 		if err != nil {
-			logger.Warn("Failed to initialize X-Ray UDP exporter", "err", err)
-		} else {
-			tp = trace.NewTracerProvider(
-				trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(xrayUDPExporter)),
-				trace.WithResource(traceResource))
+			logger.Warn("Skipping Lambda resources in traces", "err", err)
 		}
 
-		otel.SetTextMapPropagator(xraypropagator.Propagator{})
+		if exporter, err := xrayudp.NewSpanExporter(ctx); err == nil {
+			otel.SetTextMapPropagator(xraypropagator.Propagator{})
+			tp = trace.NewTracerProvider(
+				trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(exporter)),
+				trace.WithResource(traceResource))
+		} else {
+			logger.Warn("Failed to initialize X-Ray trace exporter", "err", err)
+		}
 	}
 
 	otel.SetTracerProvider(tp)
