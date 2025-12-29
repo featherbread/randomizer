@@ -71,36 +71,47 @@ func main() {
 			xrayconfig.WithRecommendedOptions(tp)...))
 }
 
+var xrayTracingEnabled = os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1"
+
 func initTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerProvider {
-	traceResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
-		Key:   semconv.ServiceNameKey,
-		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
+	traceResource := initTraceResource(ctx, logger)
+	tp := trace.NewTracerProvider(trace.WithResource(traceResource))
 
-	if os.Getenv("AWS_XRAY_TRACING_ENABLED") != "1" {
-		return trace.NewTracerProvider(trace.WithResource(traceResource))
-	}
-
-	mergedResource, err := func() (*resource.Resource, error) {
-		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return resource.Merge(lambdaResource, traceResource)
-	}()
-	if err == nil {
-		traceResource = mergedResource
-	} else {
-		logger.Warn("Skipping Lambda resources in traces", "err", err)
+	if !xrayTracingEnabled {
+		return tp
 	}
 
 	exporter, err := xrayudp.NewSpanExporter(ctx)
 	if err != nil {
-		logger.Warn("Failed to initialize X-Ray trace exporter", "err", err)
-		return trace.NewTracerProvider(trace.WithResource(traceResource))
+		logger.Warn("Failed to initialize X-Ray span exporter", "err", err)
+		return tp
 	}
 
 	otel.SetTextMapPropagator(xraypropagator.Propagator{})
-	return trace.NewTracerProvider(
-		trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(exporter)),
-		trace.WithResource(traceResource))
+	tp.RegisterSpanProcessor(trace.NewSimpleSpanProcessor(exporter))
+	return tp
+}
+
+func initTraceResource(ctx context.Context, logger *slog.Logger) *resource.Resource {
+	baseResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
+		Key:   semconv.ServiceNameKey,
+		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
+
+	if !xrayTracingEnabled {
+		return baseResource
+	}
+
+	lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
+	if err != nil {
+		logger.Warn("Skipping Lambda resources in traces", "err", err, "step", "detect")
+		return baseResource
+	}
+
+	mergedResource, err := resource.Merge(lambdaResource, baseResource)
+	if err != nil {
+		logger.Warn("Skipping Lambda resources in traces", "err", err, "step", "merge")
+		return baseResource
+	}
+
+	return mergedResource
 }
