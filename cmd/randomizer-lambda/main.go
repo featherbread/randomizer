@@ -51,31 +51,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	traceResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
-		Key:   semconv.ServiceNameKey,
-		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
-
-	tp := trace.NewTracerProvider(trace.WithResource(traceResource))
-
-	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
-		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
-		if err == nil {
-			traceResource, err = resource.Merge(lambdaResource, traceResource)
-		}
-		if err != nil {
-			logger.Warn("Skipping Lambda resources in traces", "err", err)
-		}
-
-		if exporter, err := xrayudp.NewSpanExporter(ctx); err == nil {
-			otel.SetTextMapPropagator(xraypropagator.Propagator{})
-			tp = trace.NewTracerProvider(
-				trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(exporter)),
-				trace.WithResource(traceResource))
-		} else {
-			logger.Warn("Failed to initialize X-Ray trace exporter", "err", err)
-		}
-	}
-
+	tp := initTracerProvider(ctx, logger)
 	otel.SetTracerProvider(tp)
 	defer func() {
 		err := tp.Shutdown(ctx)
@@ -93,4 +69,38 @@ func main() {
 		otellambda.InstrumentHandler(
 			httpadapter.NewV2(app).ProxyWithContext,
 			xrayconfig.WithRecommendedOptions(tp)...))
+}
+
+func initTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerProvider {
+	traceResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
+		Key:   semconv.ServiceNameKey,
+		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
+
+	if os.Getenv("AWS_XRAY_TRACING_ENABLED") != "1" {
+		return trace.NewTracerProvider(trace.WithResource(traceResource))
+	}
+
+	mergedResource, err := func() (*resource.Resource, error) {
+		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return resource.Merge(lambdaResource, traceResource)
+	}()
+	if err == nil {
+		traceResource = mergedResource
+	} else {
+		logger.Warn("Skipping Lambda resources in traces", "err", err)
+	}
+
+	exporter, err := xrayudp.NewSpanExporter(ctx)
+	if err != nil {
+		logger.Warn("Failed to initialize X-Ray trace exporter", "err", err)
+		return trace.NewTracerProvider(trace.WithResource(traceResource))
+	}
+
+	otel.SetTextMapPropagator(xraypropagator.Propagator{})
+	return trace.NewTracerProvider(
+		trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(exporter)),
+		trace.WithResource(traceResource))
 }
