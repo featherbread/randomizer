@@ -50,34 +50,42 @@ func main() {
 		os.Exit(2)
 	}
 
-	lambdaResource, err := lambdadetector.NewResourceDetector().Detect(context.Background())
-	if err != nil {
-		logger.Warn("Failed to detect Lambda resources for tracing", "err", err)
+	traceResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
+		Key:   semconv.ServiceNameKey,
+		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
+
+	tp := trace.NewTracerProvider(trace.WithResource(traceResource))
+
+	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
+		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(context.Background())
+		if err != nil {
+			logger.Warn("Failed to detect Lambda resources for tracing", "err", err)
+		} else {
+			traceResource, err = resource.Merge(lambdaResource, traceResource)
+			if err != nil {
+				logger.Warn("Failed to merge Lambda resources for tracing", "err", err)
+			}
+		}
+
+		xrayUDPExporter, err := xrayudp.NewSpanExporter(context.Background())
+		if err != nil {
+			logger.Warn("Failed to initialize X-Ray UDP exporter", "err", err)
+		} else {
+			tp = trace.NewTracerProvider(
+				trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(xrayUDPExporter)),
+				trace.WithResource(traceResource))
+		}
+
+		otel.SetTextMapPropagator(xraypropagator.Propagator{})
 	}
 
-	traceResource, err := resource.Merge(lambdaResource,
-		resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
-			Key:   semconv.ServiceNameKey,
-			Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))}))
-	if err != nil {
-		logger.Warn("Failed to merge Lambda resources for tracing", "err", err)
-	}
-
-	xrayUDPExporter, _ := xrayudp.NewSpanExporter(context.Background())
-
-	tp := trace.NewTracerProvider(
-		trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(xrayUDPExporter)),
-		trace.WithResource(traceResource))
-
+	otel.SetTracerProvider(tp)
 	defer func() {
 		err := tp.Shutdown(context.Background())
 		if err != nil {
 			logger.Warn("Failed to shut down tracer provider", "err", err)
 		}
 	}()
-
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(xraypropagator.Propagator{})
 
 	app := slack.App{
 		TokenProvider: tokenProvider,

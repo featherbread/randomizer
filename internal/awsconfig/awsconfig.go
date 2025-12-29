@@ -58,7 +58,9 @@ func New(ctx context.Context) (aws.Config, error) {
 		return aws.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}
 
-	otelaws.AppendMiddlewares(&cfg.APIOptions)
+	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
+		otelaws.AppendMiddlewares(&cfg.APIOptions)
+	}
 
 	return cfg, nil
 }

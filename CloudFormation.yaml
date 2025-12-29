@@ -73,7 +73,7 @@ Resources:
           DYNAMODB_TABLE: !Ref GroupsTable
           SLACK_TOKEN_SSM_NAME: !Sub '/${SlackTokenSSMName}'
           SLACK_TOKEN_SSM_TTL: !Ref SlackTokenSSMTTL
-          AWS_CLIENT_XRAY_TRACING: !If [HasXRayTracingEnabled, '1', !Ref AWS::NoValue]
+          AWS_XRAY_TRACING_ENABLED: !If [HasXRayTracingEnabled, '1', !Ref AWS::NoValue]
           AWS_CLIENT_EMBEDDED_TLS_ROOTS: !If [HasAWSClientEmbeddedTLSRoots, '1', !Ref AWS::NoValue]
       FunctionUrlConfig:
         AuthType: NONE
