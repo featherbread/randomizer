@@ -58,9 +58,10 @@ func New(ctx context.Context) (aws.Config, error) {
 		return aws.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}
 
-	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
-		otelaws.AppendMiddlewares(&cfg.APIOptions)
-	}
+	// OpenTelemetry tracing works regardless of whether the spans are exported
+	// anywhere useful, and the performance hit should be minimal compared to the
+	// AWS calls themselves. Let's enable this 100% of the time.
+	otelaws.AppendMiddlewares(&cfg.APIOptions)
 
 	return cfg, nil
 }
