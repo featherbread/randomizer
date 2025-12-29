@@ -36,6 +36,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	tokenProvider, err := slack.TokenProviderFromEnv()
@@ -44,7 +45,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	storeFactory, err := dynamodb.FactoryFromEnv(context.Background())
+	storeFactory, err := dynamodb.FactoryFromEnv(ctx)
 	if err != nil {
 		logger.Error("Failed to create DynamoDB store", "err", err)
 		os.Exit(2)
@@ -57,7 +58,7 @@ func main() {
 	tp := trace.NewTracerProvider(trace.WithResource(traceResource))
 
 	if os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1" {
-		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(context.Background())
+		lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
 		if err != nil {
 			logger.Warn("Failed to detect Lambda resources for tracing", "err", err)
 		} else {
@@ -67,7 +68,7 @@ func main() {
 			}
 		}
 
-		xrayUDPExporter, err := xrayudp.NewSpanExporter(context.Background())
+		xrayUDPExporter, err := xrayudp.NewSpanExporter(ctx)
 		if err != nil {
 			logger.Warn("Failed to initialize X-Ray UDP exporter", "err", err)
 		} else {
@@ -81,7 +82,7 @@ func main() {
 
 	otel.SetTracerProvider(tp)
 	defer func() {
-		err := tp.Shutdown(context.Background())
+		err := tp.Shutdown(ctx)
 		if err != nil {
 			logger.Warn("Failed to shut down tracer provider", "err", err)
 		}
