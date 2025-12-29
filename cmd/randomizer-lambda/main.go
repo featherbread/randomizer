@@ -20,6 +20,10 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda/xrayconfig"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/featherbread/randomizer/internal/slack"
 	"github.com/featherbread/randomizer/internal/store/dynamodb"
@@ -40,10 +44,16 @@ func main() {
 		os.Exit(2)
 	}
 
+	tp := trace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
+
 	app := slack.App{
 		TokenProvider: tokenProvider,
 		StoreFactory:  storeFactory,
 		Logger:        logger,
 	}
-	lambda.Start(httpadapter.NewV2(app).ProxyWithContext)
+	lambda.Start(
+		otellambda.InstrumentHandler(
+			httpadapter.NewV2(app).ProxyWithContext,
+			xrayconfig.WithRecommendedOptions(tp)...))
 }

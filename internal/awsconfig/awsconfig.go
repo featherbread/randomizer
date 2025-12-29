@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	xrayawsv2 "github.com/aws/aws-xray-sdk-go/v2/instrumentation/awsv2"
 )
 
 const (
@@ -56,13 +55,6 @@ func New(ctx context.Context) (aws.Config, error) {
 	)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("loading AWS config: %w", err)
-	}
-
-	// NOTE: X-Ray tracing panics if the context for an AWS call is not already
-	// associated with an open X-Ray segment. As of writing, this option is only
-	// safe to use on AWS Lambda. Standard server deployments should avoid it.
-	if useXRay := os.Getenv("AWS_CLIENT_XRAY_TRACING"); useXRay == "1" {
-		xrayawsv2.AWSV2Instrumentor(&cfg.APIOptions)
 	}
 
 	return cfg, nil
