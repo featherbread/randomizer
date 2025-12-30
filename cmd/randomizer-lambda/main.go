@@ -51,6 +51,8 @@ func main() {
 		os.Exit(2)
 	}
 
+	// OpenTelemetry is always active, but traces are only exported to AWS X-Ray
+	// (and charged for usage) if enabled in the environment.
 	tp := initTracerProvider(ctx, logger)
 	otel.SetTracerProvider(tp)
 	if xrayTracingEnabled {
