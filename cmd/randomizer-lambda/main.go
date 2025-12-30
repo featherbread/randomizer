@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	xraypropagator "go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -98,9 +97,9 @@ func initTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerP
 }
 
 func initTraceResource(ctx context.Context, logger *slog.Logger) *resource.Resource {
-	baseResource := resource.NewWithAttributes(semconv.SchemaURL, attribute.KeyValue{
-		Key:   semconv.ServiceNameKey,
-		Value: attribute.StringValue(os.Getenv("AWS_LAMBDA_FUNCTION_NAME"))})
+	baseResource := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(os.Getenv("AWS_LAMBDA_FUNCTION_NAME")))
 
 	if !xrayTracingEnabled {
 		return baseResource
