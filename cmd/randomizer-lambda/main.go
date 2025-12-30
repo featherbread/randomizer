@@ -70,10 +70,10 @@ func main() {
 		StoreFactory:  storeFactory,
 		Logger:        logger,
 	}
-	appHandler := otelhttp.NewHandler(app, "slack")
-	adapterHandler := httpadapter.NewV2(appHandler).ProxyWithContext
-	handler := otellambda.InstrumentHandler(adapterHandler, xrayconfig.WithRecommendedOptions(tp)...)
-	lambda.Start(handler)
+	httpHandler := otelhttp.NewHandler(app, "/")
+	adapterHandler := httpadapter.NewV2(httpHandler).ProxyWithContext
+	parentHandler := otellambda.InstrumentHandler(adapterHandler, xrayconfig.WithRecommendedOptions(tp)...)
+	lambda.Start(parentHandler)
 }
 
 var xrayTracingEnabled = os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1"
