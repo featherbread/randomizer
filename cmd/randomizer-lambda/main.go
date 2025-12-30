@@ -24,6 +24,7 @@ import (
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda/xrayconfig"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	xraypropagator "go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -70,8 +71,9 @@ func main() {
 		StoreFactory:  storeFactory,
 		Logger:        logger,
 	}
-	appHandler := httpadapter.NewV2(app).ProxyWithContext
-	handler := otellambda.InstrumentHandler(appHandler, xrayconfig.WithRecommendedOptions(tp)...)
+	appHandler := otelhttp.NewHandler(app, "slack")
+	adapterHandler := httpadapter.NewV2(appHandler).ProxyWithContext
+	handler := otellambda.InstrumentHandler(adapterHandler, xrayconfig.WithRecommendedOptions(tp)...)
 	lambda.Start(handler)
 }
 
