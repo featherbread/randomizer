@@ -16,10 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
-	"go.opentelemetry.io/otel"
 )
-
-var tracer = otel.Tracer("github.com/featherbread/randomizer/internal/awsconfig")
 
 const (
 	// DefaultTimeout is set to half of the 3-second response time limit that
@@ -43,11 +40,7 @@ func New(ctx context.Context) (aws.Config, error) {
 	// start latency (see [getEmbeddedCertTransport]). It can be enabled for
 	// standard server deployments if desired, but is far less beneficial.
 	if os.Getenv("AWS_CLIENT_EMBEDDED_TLS_ROOTS") == "1" {
-		func() {
-			_, span := tracer.Start(ctx, "loadcerts")
-			defer span.End()
-			transport = getEmbeddedCertTransport()
-		}()
+		transport = getEmbeddedCertTransport()
 	}
 
 	cfg, err := config.LoadDefaultConfig(ctx,
