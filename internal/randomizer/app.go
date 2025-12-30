@@ -64,7 +64,7 @@ func (a App) Main(ctx context.Context, args []string) (Result, error) {
 		return Result{}, err
 	}
 
-	span.SetAttributes(attribute.String("operation", request.Operation.String()))
+	span.SetAttributes(attribute.String("randomizer.operation", request.Operation.String()))
 	handler := appHandlers[request.Operation]
 	return handler(a, request)
 }
