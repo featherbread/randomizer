@@ -132,10 +132,10 @@ Run `./hfc help` to learn more about additional commands that might be useful.
   isn't eligible for the AWS Free Tier. See the [Read/Write Capacity
   Mode][capacity mode] documentation for details.
 - The default configuration enables [AWS X-Ray][x-ray] tracing for the function
-  and its requests to DynamoDB. X-Ray is free for up to 100,000 traces per month
-  for every AWS account, and it's useful to see where each request is spending
-  time. However, you can turn it off by passing `XRayTracingEnabled=false` to
-  the deployment script.
+  and its AWS SDK requests. Every AWS account can collect up to 100,000 traces
+  per month for free, which is useful to see where requests are spending time.
+  However, you can turn this off by passing `XRayTracingEnabled=false` to the
+  deployment script.
 - My co-workers and I collectively make a little over 500 requests to the
   randomizer per month, and at that small of a volume it's essentially free to
   run on AWS even without the 12 month free tier. My _rough_ estimate is that
