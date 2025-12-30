@@ -53,6 +53,9 @@ func main() {
 
 	tp := initTracerProvider(ctx, logger)
 	otel.SetTracerProvider(tp)
+	if xrayTracingEnabled {
+		otel.SetTextMapPropagator(xraypropagator.Propagator{})
+	}
 	defer func() {
 		err := tp.Shutdown(ctx)
 		if err != nil {
@@ -65,10 +68,9 @@ func main() {
 		StoreFactory:  storeFactory,
 		Logger:        logger,
 	}
-	lambda.Start(
-		otellambda.InstrumentHandler(
-			httpadapter.NewV2(app).ProxyWithContext,
-			xrayconfig.WithRecommendedOptions(tp)...))
+	appHandler := httpadapter.NewV2(app).ProxyWithContext
+	handler := otellambda.InstrumentHandler(appHandler, xrayconfig.WithRecommendedOptions(tp)...)
+	lambda.Start(handler)
 }
 
 var xrayTracingEnabled = os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1"
@@ -87,7 +89,6 @@ func initTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerP
 		return tp
 	}
 
-	otel.SetTextMapPropagator(xraypropagator.Propagator{})
 	tp.RegisterSpanProcessor(trace.NewSimpleSpanProcessor(exporter))
 	return tp
 }
