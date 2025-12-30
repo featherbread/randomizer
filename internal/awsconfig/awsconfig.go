@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
-	xrayawsv2 "github.com/aws/aws-xray-sdk-go/v2/instrumentation/awsv2"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
 const (
@@ -58,12 +58,10 @@ func New(ctx context.Context) (aws.Config, error) {
 		return aws.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}
 
-	// NOTE: X-Ray tracing panics if the context for an AWS call is not already
-	// associated with an open X-Ray segment. As of writing, this option is only
-	// safe to use on AWS Lambda. Standard server deployments should avoid it.
-	if useXRay := os.Getenv("AWS_CLIENT_XRAY_TRACING"); useXRay == "1" {
-		xrayawsv2.AWSV2Instrumentor(&cfg.APIOptions)
-	}
+	// OpenTelemetry tracing works regardless of whether the spans are exported
+	// anywhere useful, and the performance hit should be minimal compared to the
+	// AWS calls themselves. Let's enable this 100% of the time.
+	otelaws.AppendMiddlewares(&cfg.APIOptions)
 
 	return cfg, nil
 }
