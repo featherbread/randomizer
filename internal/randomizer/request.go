@@ -16,6 +16,24 @@ const (
 	deleteGroup
 )
 
+func (op operation) String() string {
+	switch op {
+	case makeSelection:
+		return "select"
+	case showHelp:
+		return "help"
+	case listGroups:
+		return "list"
+	case showGroup:
+		return "show"
+	case saveGroup:
+		return "save"
+	case deleteGroup:
+		return "delete"
+	}
+	return ""
+}
+
 // request represents a single user request to a randomizer instance, created
 // from raw user input.
 type request struct {

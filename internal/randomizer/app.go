@@ -3,7 +3,12 @@ package randomizer
 import (
 	"context"
 	"math/rand/v2"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+var tracer = otel.Tracer("github.com/featherbread/randomizer/internal/randomizer")
 
 // Store enables persistence for named groups of options.
 type Store interface {
@@ -50,10 +55,16 @@ func shuffle(options []string) {
 // All errors returned from Main are of type [Error], and support
 // [Error.HelpText] for user-friendly formatting.
 func (a App) Main(ctx context.Context, args []string) (Result, error) {
+	ctx, span := tracer.Start(ctx, "Main")
+	defer span.End()
+
 	request, err := a.newRequest(ctx, args)
 	if err != nil {
+		span.RecordError(err)
 		return Result{}, err
 	}
+
+	span.SetAttributes(attribute.String("operation", request.Operation.String()))
 	handler := appHandlers[request.Operation]
 	return handler(a, request)
 }
