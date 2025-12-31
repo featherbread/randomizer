@@ -80,24 +80,23 @@ func AWSParameter(name string, ttl time.Duration) TokenProvider {
 		ctx, span := tracer.Start(ctx, "AWSParameterTokenProvider")
 		defer span.End()
 
-		span.AddEvent("LockStart")
 		select {
 		case lock <- struct{}{}:
-			span.AddEvent("Lock")
-			defer func() { <-lock }()
+			defer func() {
+				<-lock
+				span.SetAttributes(
+					attribute.Int64("randomizer.slack.ssm.expiry", expiry.Unix()))
+			}()
 		case <-ctx.Done():
-			span.AddEvent("LockCancel")
 			return "", ctx.Err()
 		}
 
 		if time.Now().Before(expiry) {
-			span.SetAttributes(
-				attribute.Float64(
-					"randomizer.slack.awsparameter.ttl",
-					time.Until(expiry).Seconds()))
+			span.SetAttributes(attribute.Bool("randomizer.slack.ssm.cached", true))
 			return token, nil
 		}
 
+		span.SetAttributes(attribute.Bool("randomizer.slack.ssm.cached", false))
 		cfg, err := awsconfig.New(ctx)
 		if err != nil {
 			return "", err
