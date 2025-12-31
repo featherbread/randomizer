@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/featherbread/randomizer/internal/awsconfig"
 )
@@ -76,14 +77,24 @@ func AWSParameter(name string, ttl time.Duration) TokenProvider {
 	)
 
 	return func(ctx context.Context) (string, error) {
+		ctx, span := tracer.Start(ctx, "AWSParameterTokenProvider")
+		defer span.End()
+
+		span.AddEvent("LockStart")
 		select {
 		case lock <- struct{}{}:
+			span.AddEvent("Lock")
 			defer func() { <-lock }()
 		case <-ctx.Done():
+			span.AddEvent("LockCancel")
 			return "", ctx.Err()
 		}
 
 		if time.Now().Before(expiry) {
+			span.SetAttributes(
+				attribute.Float64(
+					"randomizer.slack.awsparameter.ttl",
+					time.Until(expiry).Seconds()))
 			return token, nil
 		}
 

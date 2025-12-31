@@ -10,8 +10,12 @@ import (
 	"net/url"
 	"strings"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/featherbread/randomizer/internal/randomizer"
 )
+
+var tracer = otel.Tracer("github.com/featherbread/randomizer/internal/slack")
 
 // App serves the randomizer through the Slack slash command API.
 //
