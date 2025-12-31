@@ -55,7 +55,7 @@ func shuffle(options []string) {
 // All errors returned from Main are of type [Error], and support
 // [Error.HelpText] for user-friendly formatting.
 func (a App) Main(ctx context.Context, args []string) (Result, error) {
-	ctx, span := tracer.Start(ctx, "Main")
+	ctx, span := tracer.Start(ctx, "randomizer.Main")
 	defer span.End()
 
 	request, err := a.newRequest(ctx, args)

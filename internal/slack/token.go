@@ -77,7 +77,7 @@ func AWSParameter(name string, ttl time.Duration) TokenProvider {
 	)
 
 	return func(ctx context.Context) (string, error) {
-		ctx, span := tracer.Start(ctx, "AWSParameterTokenProvider")
+		ctx, span := tracer.Start(ctx, "slack.AWSParameter")
 		defer span.End()
 
 		select {
