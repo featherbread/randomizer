@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -46,7 +47,7 @@ func New(ctx context.Context) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithHTTPClient(&http.Client{
 			Timeout:   DefaultTimeout,
-			Transport: transport,
+			Transport: otelhttp.NewTransport(transport),
 		}),
 		config.WithRetryer(
 			func() aws.Retryer {
