@@ -77,6 +77,8 @@ func AWSParameter(name string, ttl time.Duration) TokenProvider {
 	)
 
 	return func(ctx context.Context) (string, error) {
+		var cached bool
+
 		ctx, span := tracer.Start(ctx, "slack.AWSParameter")
 		defer span.End()
 
@@ -85,18 +87,20 @@ func AWSParameter(name string, ttl time.Duration) TokenProvider {
 			defer func() {
 				<-lock
 				span.SetAttributes(
+					attribute.Bool("randomizer.slack.ssm.cached", cached),
 					attribute.Int64("randomizer.slack.ssm.expiry", expiry.Unix()))
 			}()
+
 		case <-ctx.Done():
+			span.RecordError(ctx.Err())
 			return "", ctx.Err()
 		}
 
 		if time.Now().Before(expiry) {
-			span.SetAttributes(attribute.Bool("randomizer.slack.ssm.cached", true))
+			cached = true
 			return token, nil
 		}
 
-		span.SetAttributes(attribute.Bool("randomizer.slack.ssm.cached", false))
 		cfg, err := awsconfig.New(ctx)
 		if err != nil {
 			return "", err
