@@ -51,19 +51,19 @@ func main() {
 		os.Exit(2)
 	}
 
-	// OpenTelemetry is always active, but traces are only exported to AWS X-Ray
-	// (and charged for usage) if enabled in the environment.
-	tp := initTracerProvider(ctx, logger)
-	otel.SetTracerProvider(tp)
-	if xrayTracingEnabled {
+	var otellambdaOptions []otellambda.Option
+	if xrayTracerProviderEnabled {
+		tp := initXRayTracerProvider(ctx, logger)
+		otel.SetTracerProvider(tp)
 		otel.SetTextMapPropagator(xraypropagator.Propagator{})
+		otellambdaOptions = xrayconfig.WithRecommendedOptions(tp)
+		defer func() {
+			err := tp.Shutdown(ctx)
+			if err != nil {
+				logger.Warn("Failed to shut down tracer provider", "err", err)
+			}
+		}()
 	}
-	defer func() {
-		err := tp.Shutdown(ctx)
-		if err != nil {
-			logger.Warn("Failed to shut down tracer provider", "err", err)
-		}
-	}()
 
 	app := slack.App{
 		TokenProvider: tokenProvider,
@@ -72,19 +72,19 @@ func main() {
 	}
 	httpHandler := otelhttp.NewHandler(app, "/")
 	adapterHandler := httpadapter.NewV2(httpHandler).ProxyWithContext
-	parentHandler := otellambda.InstrumentHandler(adapterHandler, xrayconfig.WithRecommendedOptions(tp)...)
+	parentHandler := otellambda.InstrumentHandler(adapterHandler, otellambdaOptions...)
 	lambda.Start(parentHandler)
 }
 
-var xrayTracingEnabled = os.Getenv("AWS_XRAY_TRACING_ENABLED") == "1"
+// xrayTracerProviderEnabled indicates whether we should manually configure
+// OpenTelemetry to export spans to Lambda's X-Ray UDP collector. This could be
+// disabled if we don't want X-Ray tracing at all, or if we're configuring the
+// Auto SDK via eBPF (e.g. ADOT Lambda layers).
+var xrayTracerProviderEnabled = os.Getenv("AWS_XRAY_TRACER_PROVIDER_ENABLED") == "1"
 
-func initTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerProvider {
-	traceResource := initTraceResource(ctx, logger)
-	tp := trace.NewTracerProvider(trace.WithResource(traceResource))
-
-	if !xrayTracingEnabled {
-		return tp
-	}
+func initXRayTracerProvider(ctx context.Context, logger *slog.Logger) *trace.TracerProvider {
+	tp := trace.NewTracerProvider(
+		trace.WithResource(initTraceResource(ctx, logger)))
 
 	exporter, err := xrayudp.NewSpanExporter(ctx)
 	if err != nil {
@@ -100,10 +100,6 @@ func initTraceResource(ctx context.Context, logger *slog.Logger) *resource.Resou
 	baseResource := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(os.Getenv("AWS_LAMBDA_FUNCTION_NAME")))
-
-	if !xrayTracingEnabled {
-		return baseResource
-	}
 
 	lambdaResource, err := lambdadetector.NewResourceDetector().Detect(ctx)
 	if err != nil {
