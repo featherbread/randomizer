@@ -48,10 +48,29 @@ const (
 	DocumentModified
 )
 
+// String returns the string representation of the DocumentChangeKind.
+func (k DocumentChangeKind) String() string {
+	switch k {
+	case DocumentAdded:
+		return "DocumentAdded"
+	case DocumentModified:
+		return "DocumentModified"
+	case DocumentRemoved:
+		return "DocumentRemoved"
+	default:
+		return "Unknown"
+	}
+}
+
 // A DocumentChange describes the change to a document from one query snapshot to the next.
 type DocumentChange struct {
 	Kind DocumentChangeKind
 	Doc  *DocumentSnapshot
+	// The document snapshot before the change.
+	// This will be nil for DocumentAdded events.
+	// For DocumentRemoved events, this will be the same as Doc.
+	// For DocumentModified events, this will be the document before the modification.
+	OldDoc *DocumentSnapshot
 	// The zero-based index of the document in the sequence of query results prior to this change,
 	// or -1 if the document was not present.
 	OldIndex int
@@ -365,6 +384,7 @@ func (s *watchStream) computeSnapshot(docTree *btree.BTree, docMap, changeMap ma
 		changes = append(changes, DocumentChange{
 			Kind:     DocumentRemoved,
 			Doc:      oldDoc,
+			OldDoc:   oldDoc,
 			OldIndex: oldi,
 			NewIndex: -1,
 		})
@@ -405,6 +425,7 @@ func (s *watchStream) computeSnapshot(docTree *btree.BTree, docMap, changeMap ma
 		changes = append(changes, DocumentChange{
 			Kind:     DocumentModified,
 			Doc:      newDoc,
+			OldDoc:   oldDoc,
 			OldIndex: oldi,
 			NewIndex: newi,
 		})

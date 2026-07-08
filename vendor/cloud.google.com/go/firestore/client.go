@@ -34,6 +34,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -46,7 +47,7 @@ const resourcePrefixHeader = "google-cloud-resource-prefix"
 // requestParamsHeader is routing header required to access named databases
 const reqParamsHeader = "x-goog-request-params"
 
-// reqParamsHeaderVal constructs header from dbPath
+// reqParamsHeaderVal constructs header from dbPath.
 // dbPath is of the form projects/{project_id}/databases/{database_id}
 func reqParamsHeaderVal(dbPath string) string {
 	splitPath := strings.Split(dbPath, "/")
@@ -69,24 +70,32 @@ const DefaultDatabaseID = "(default)"
 
 // A Client provides access to the Firestore service.
 type Client struct {
-	c            *vkit.Client
-	projectID    string
-	databaseID   string        // A client is tied to a single database.
-	readSettings *readSettings // readSettings allows setting a snapshot time to read the database
+	c                        *vkit.Client
+	projectID                string
+	databaseID               string        // A client is tied to a single database.
+	readSettings             *readSettings // readSettings allows setting a snapshot time to read the database
+	UsesEmulator             bool          // a boolean that indicates if the client is using the emulator
+	alwaysUseImplicitOrderBy bool          // configuration flag to always append implicit OrderBy clauses
 }
 
-// NewClient creates a new Firestore client that uses the given project.
-func NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*Client, error) {
+// newClient creates a new Firestore client, using the given createClient function to create the underlying client.
+func newClient(ctx context.Context, projectID string, createClient func(ctx context.Context, opts ...option.ClientOption) (*vkit.Client, error), supportsEmulator bool, opts ...option.ClientOption) (*Client, error) {
 	if projectID == "" {
 		return nil, errors.New("firestore: projectID was empty")
 	}
 	var o []option.ClientOption
+	var usesEmulator bool
 	// If this environment variable is defined, configure the client to talk to the emulator.
 	if addr := os.Getenv("FIRESTORE_EMULATOR_HOST"); addr != "" {
-		conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithPerRPCCredentials(emulatorCreds{}))
+		if !supportsEmulator {
+			return nil, fmt.Errorf("firestore: emulator is not supported for this client type")
+		}
+
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(emulatorCreds{}))
 		if err != nil {
 			return nil, fmt.Errorf("firestore: dialing address from env var FIRESTORE_EMULATOR_HOST: %s", err)
 		}
+		usesEmulator = true
 		o = []option.ClientOption{option.WithGRPCConn(conn)}
 		projectID, _ = detect.ProjectID(ctx, projectID, "", opts...)
 		if projectID == "" {
@@ -101,7 +110,7 @@ func NewClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 		return nil, err
 	}
 
-	vc, err := vkit.NewClient(ctx, o...)
+	vc, err := createClient(ctx, o...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +120,19 @@ func NewClient(ctx context.Context, projectID string, opts ...option.ClientOptio
 		projectID:    projectID,
 		databaseID:   DefaultDatabaseID,
 		readSettings: &readSettings{},
+		UsesEmulator: usesEmulator,
 	}
 	return c, nil
+}
+
+// NewClient creates a new Firestore client that uses the given project.
+func NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*Client, error) {
+	return newClient(ctx, projectID, vkit.NewClient, true, opts...)
+}
+
+// NewRESTClient creates a new Firestore client that uses the REST API.
+func NewRESTClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*Client, error) {
+	return newClient(ctx, projectID, vkit.NewRESTClient, false, opts...)
 }
 
 // NewClientWithDatabase creates a new Firestore client that accesses the
@@ -162,6 +182,11 @@ func withRequestParamsHeader(ctx context.Context, requestParams string) context.
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
+// Pipeline creates a PipelineSource to start building a Firestore pipeline.
+func (c *Client) Pipeline() *PipelineSource {
+	return &PipelineSource{client: c}
+}
+
 // Collection creates a reference to a collection with the given path.
 // A path is a sequence of IDs separated by slashes.
 //
@@ -178,6 +203,40 @@ func (c *Client) Collection(path string) *CollectionRef {
 func (c *Client) Doc(path string) *DocumentRef {
 	_, doc := c.idsToRef(strings.Split(path, "/"), c.path())
 	return doc
+}
+
+// DocFromFullPath creates a reference to a document from its full, absolute path,
+// also known as its Google Cloud resource name.
+// The path must be in the format:
+// "projects/{projectID}/databases/{databaseID}/documents/{collectionID}/{documentID}/..."
+// This method returns nil if:
+//   - The fullPath is empty.
+//   - The fullPath does not match the expected resource name format (e.g., missing "projects/" or "/documents/").
+//   - The projectID or databaseID in the fullPath do not match the client's configuration.
+//   - The fullPath refers to a collection instead of a document (i.e., has an odd number of segments after "/documents/").
+//   - The fullPath contains any empty path segments.
+func (c *Client) DocFromFullPath(fullPath string) *DocumentRef {
+	if fullPath == "" {
+		return nil
+	}
+
+	const documentsPrefix = "/documents/"
+	if !strings.HasPrefix(fullPath, "projects/") || !strings.Contains(fullPath, documentsPrefix) {
+		return nil
+	}
+	parts := strings.SplitN(fullPath, documentsPrefix, 2)
+	if len(parts) != 2 {
+		return nil
+	}
+
+	actualDBPathFromFullPath := parts[0]
+	expectedDBPath := c.path()
+	if actualDBPathFromFullPath != expectedDBPath {
+		return nil
+	}
+
+	_, docRef := c.idsToRef(strings.Split(parts[1], "/"), actualDBPathFromFullPath)
+	return docRef
 }
 
 // CollectionGroup creates a reference to a group of collections that include
@@ -355,6 +414,18 @@ func (c *Client) WithReadOptions(opts ...ReadOption) *Client {
 	for _, ro := range opts {
 		ro.apply(c.readSettings)
 	}
+	return c
+}
+
+// WithAlwaysUseImplicitOrderBy configures the default behavior for queries.
+// If enabled, queries will automatically inject an OrderBy clause for the
+// Document ID (`__name__`) if one is not explicitly provided. In addition,
+// it will automatically inject OrderBy clauses for any inequality filters
+// (e.g. >, <, !=) present in the query if they are missing from the explicit
+// orders. This ensures strictly deterministic query results and is especially
+// useful when executing backwards pagination (e.g. limitToLast) without cursors.
+func (c *Client) WithAlwaysUseImplicitOrderBy(b bool) *Client {
+	c.alwaysUseImplicitOrderBy = b
 	return c
 }
 

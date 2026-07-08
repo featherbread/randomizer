@@ -1,3 +1,181 @@
+# v1.8.51 (2026-07-06)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.50 (2026-07-01)
+
+* **Bug Fix**: Bump smithy-go to 1.27.3, fix JSON encorder for document.Number, endpoint host label format validation and CBOR union serialization on new serde
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.49 (2026-06-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.48 (2026-06-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.47 (2026-06-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.46 (2026-06-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.45 (2026-06-04)
+
+* **Dependency Update**: Update to smithy-go v1.27.1 to fix several union-related deserialization bugs in schema-serde-enabled services.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.44 (2026-06-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.43 (2026-06-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.42 (2026-05-29)
+
+* **Dependency Update**: Update to smithy-go v1.26.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.41 (2026-05-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.40 (2026-05-22)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.39 (2026-04-29)
+
+* **Dependency Update**: Update to smithy-go v1.25.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.38 (2026-04-17)
+
+* **Dependency Update**: Bump smithy-go to 1.25.0 to support endpointBdd trait
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.37 (2026-03-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.36 (2026-03-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.35 (2026-03-13)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.34 (2026-03-03)
+
+* **Bug Fix**: Modernize non codegen files with go fix
+* **Dependency Update**: Bump minimum Go version to 1.24
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.33 (2026-02-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.32 (2026-02-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.31 (2026-01-22)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.30 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.29 (2025-12-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.28 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.27 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.8.26 (2025-11-25)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.25 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.24 (2025-11-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.23 (2025-11-12)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.22 (2025-11-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.21 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.8.20 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.19 (2025-10-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.18 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.17 (2025-10-22)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.16 (2025-10-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.15 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.14 (2025-10-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.13 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.12 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.11 (2025-09-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.8.10 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.8.9 (2025-08-29)
 
 * **Dependency Update**: Updated to the latest SDK module versions
