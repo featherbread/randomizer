@@ -1,3 +1,26 @@
+# v1.73.2 (2026-07-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.73.1 (2026-07-28)
+
+* **Dependency Update**: Update to smithy-go v1.27.5.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.73.0 (2026-07-21)
+
+* **Feature**: Add an option to clients to disable clock skew
+* **Feature**: Added a WarningMessage field to Automation along with corresponding public documentation.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.72.0 (2026-07-14)
+
+* **Feature**: Update AWS Systems Manager Automation Targets to be correct max value.
+
+# v1.71.1 (2026-07-13)
+
+* No change notes available for this release.
+
 # v1.71.0 (2026-07-07)
 
 * **Feature**: Adding SSM Cloud Connector to support Azure Virtual Machines onboarding to AWS Systems Manager

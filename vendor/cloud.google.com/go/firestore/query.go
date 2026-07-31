@@ -587,6 +587,26 @@ func (vq VectorQuery) Documents(ctx context.Context) *DocumentIterator {
 	return vq.q.Documents(ctx)
 }
 
+func (vq VectorQuery) query() *Query {
+	return &vq.q
+}
+
+// Serialize creates a RunQueryRequest wire-format byte slice from a VectorQuery object.
+// This can be used in combination with Deserialize to marshal VectorQuery objects.
+// This could be useful, for instance, if executing a query formed in one
+// process in another.
+func (vq VectorQuery) Serialize() ([]byte, error) {
+	return vq.q.Serialize()
+}
+
+// Deserialize takes a slice of bytes holding the wire-format message of RunQueryRequest,
+// the underlying proto message used by Queries. It then populates and returns a
+// VectorQuery object that can be used to execute that VectorQuery.
+func (vq VectorQuery) Deserialize(bytes []byte) (VectorQuery, error) {
+	q, err := vq.q.Deserialize(bytes)
+	return VectorQuery{q: q}, err
+}
+
 // FindNearestPath is like [Query.FindNearest] but it accepts a [FieldPath].
 func (q Query) FindNearestPath(vectorFieldPath FieldPath, queryVector any, limit int, measure DistanceMeasure, options *FindNearestOptions) VectorQuery {
 	vq := VectorQuery{q: q}
@@ -1354,6 +1374,10 @@ func (it *DocumentIterator) ExplainMetrics() (*ExplainMetrics, error) {
 // Next returns the next result. Its second return value is iterator.Done if there
 // are no more results. Once Next returns Done, all subsequent calls will return
 // Done.
+//
+// In addition, if Next returns an error other than iterator.Done, all
+// subsequent calls will return the same error. To continue iteration, a new
+// DocumentIterator must be created.
 func (it *DocumentIterator) Next() (*DocumentSnapshot, error) {
 	if it.err != nil {
 		return nil, it.err
@@ -1540,6 +1564,10 @@ type QuerySnapshotIterator struct {
 //
 // Next is not expected to return iterator.Done unless it is called after Stop.
 // Rarely, networking issues may also cause iterator.Done to be returned.
+//
+// In addition, if Next returns an error other than iterator.Done, all
+// subsequent calls will return the same error. To continue iteration, a new
+// QuerySnapshotIterator must be created.
 func (it *QuerySnapshotIterator) Next() (*QuerySnapshot, error) {
 	if it.err != nil {
 		return nil, it.err
@@ -1813,6 +1841,36 @@ func (a *AggregationQuery) GetResponse(ctx context.Context) (aro *AggregationRes
 
 // AggregationResult contains the results of an aggregation query.
 type AggregationResult map[string]interface{}
+
+// Data returns the AggregationResult's fields as a map of native Go types.
+// It is equivalent to
+//
+//	var m map[string]interface{}
+//	ar.DataTo(&m)
+func (ar AggregationResult) Data() map[string]interface{} {
+	var m map[string]interface{}
+	if err := ar.DataTo(&m); err != nil {
+		// Any error here is a bug in the client.
+		panic(fmt.Sprintf("firestore: %v", err))
+	}
+	return m
+}
+
+// DataTo uses the aggregation result's fields to populate p, which can be a pointer to a
+// map[string]interface{} or a pointer to a struct.
+//
+// See DocumentSnapshot.DataTo for how Firestore values are converted to Go values.
+func (ar AggregationResult) DataTo(p interface{}) error {
+	pm := make(map[string]*pb.Value, len(ar))
+	for k, v := range ar {
+		pbVal, ok := v.(*pb.Value)
+		if !ok {
+			return fmt.Errorf("firestore: aggregation result value for %q is not a *pb.Value", k)
+		}
+		pm[k] = pbVal
+	}
+	return setFromProtoValue(p, &pb.Value{ValueType: &pb.Value_MapValue{MapValue: &pb.MapValue{Fields: pm}}}, nil)
+}
 
 // AggregationResponse contains AggregationResult and response from the run options in the query
 type AggregationResponse struct {
