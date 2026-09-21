@@ -4,7 +4,7 @@ package slack
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
+	"encoding/json/v2"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -133,7 +133,7 @@ func (a App) writeError(w http.ResponseWriter, err error) {
 
 func (a App) writeResponse(w http.ResponseWriter, response response) {
 	w.Header().Add("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(response)
+	err := json.MarshalWrite(w, response)
 	if err != nil {
 		a.logErr(err, "Failed to write response")
 	}
